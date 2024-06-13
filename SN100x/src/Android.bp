@@ -1,0 +1,266 @@
+cc_library_shared {
+    arch: {
+        arm: {
+            instruction_set: "arm",
+        },
+    },
+    name: "libsn100nfc-nci",
+    system_ext_specific: true,
+    shared_libs: [
+        "libcutils",
+        "liblog",
+        "libdl",
+        "libhardware",
+        "libz",
+        "libchrome",
+        "libbase",
+        "libstatslog_nfc",
+
+        // Treble configuration
+        "libhidlbase",
+        "libutils",
+        "libbinder",
+        "libbinder_ndk",
+        "android.hardware.nfc@1.0",
+        "android.hardware.nfc@1.1",
+        "android.hardware.nfc@1.2",
+        "vendor.nxp.hardware.nfc@1.0",
+        "vendor.nxp.hardware.nfc@1.1",
+        "vendor.nxp.hardware.nfc@2.0",	
+        "vendor.nxp.nxpnfc_aidl-V1-ndk",
+	// Add for AIDL
+	"android.hardware.nfc-V1-ndk",
+	"libbinder_ndk",
+        // Added for Memory leak trace
+       "libmemunreachable",
+    ],
+    static_libs: [
+        "libsn100nfcutils",
+    ],
+    cflags: [
+        "-DDYN_ALLOC=1",
+        "-DBUILDCFG=1",
+        "-DGKI_PTHREAD_JOINABLE",
+        "-Wall",
+        "-Werror",
+        "-Wimplicit-fallthrough",
+        "-DNXP_EXTNS=TRUE",
+        "-DNXP_SRD=TRUE",
+        "-DNXP_QTAG=TRUE"
+    ],
+    local_include_dirs: [
+        "include",
+        "gki/ulinux",
+        "gki/common",
+        "nfa/include",
+        "nfc/include",
+       ],
+    srcs: [
+        "nfa/ce/*.cc",
+        "nfa/dm/*.cc",
+        "nfa/ee/*.cc",
+        "nfa/hci/*.cc",
+        "nfa/p2p/*.cc",
+        "nfa/rw/*.cc",
+        "nfa/scr/*.cc",
+        "nfa/sys/*.cc",
+        "nfa/t4tnfcee/*.cc",
+        "nfa/wlc/*.cc",
+        "nfa/srd/*.cc",
+        "nfc/llcp/*.cc",
+        "nfc/nci/*.cc",
+        "nfc/ndef/*.cc",
+        "nfc/nfc/*.cc",
+        "nfc/tags/*.cc",
+        "adaptation/*.cc",
+        "gki/common/*.cc",
+        "gki/ulinux/*.cc",
+    ],
+    product_variables: {
+        debuggable: {
+            cflags: [
+                "-DDCHECK_ALWAYS_ON",
+            ],
+        },
+    },
+    sanitize: {
+        cfi: true,
+        misc_undefined: ["bounds"],
+        integer_overflow: true,
+        scs: true,
+        diag: {
+            integer_overflow: true,
+            misc_undefined: ["bounds"],
+            no_recover: ["bounds", "integer"],
+        },
+    },
+
+}
+cc_defaults {
+    name: "nqnfc_fuzzer_defaults",
+    native_coverage: true,
+    static_libs: [
+        "libnfcutils",
+        "libcutils",
+        "liblog",
+        "libbase",
+        "libchrome",
+    ],
+    cflags: [
+        "-DBUILDCFG=1",
+        "-Wall",
+        "-Werror",
+        "-Wimplicit-fallthrough",
+        "-g",
+        "-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION",
+        "-DGKI_ENABLE_BUF_CORRUPTION_CHECK=FALSE",
+    ],
+    product_variables: {
+        debuggable: {
+            cflags: [
+                "-DDCHECK_ALWAYS_ON"
+            ],
+        },
+    },
+    sanitize : {
+        misc_undefined: [
+            "bounds",
+        ],
+        address: true,
+    },
+    local_include_dirs: [
+        "include",
+        "gki/ulinux",
+        "gki/common",
+        "nfc/include",
+        "nfa/include",
+        "fuzzers/inc",
+    ],
+}
+
+cc_library {
+    name: "nqlibstatslog_nfc",
+    host_supported: true,
+    generated_sources: ["nqstatslog_nfc.cpp"],
+    generated_headers: ["nqstatslog_nfc.h"],
+    export_generated_headers: ["nqstatslog_nfc.h"],
+    shared_libs: [
+        "libcutils",
+    ],
+    target: {
+        android: {
+            shared_libs: [
+                "libstatssocket",
+            ],
+        },
+        host: {
+            static_libs: [
+                "libstatssocket",
+            ],
+        },
+        darwin: {
+            enabled: false,
+        },
+    },
+}
+
+genrule {
+    name: "nqstatslog_nfc.h",
+    tools: ["stats-log-api-gen"],
+    cmd: "$(location stats-log-api-gen) --header $(genDir)/nqstatslog_nfc.h --module nfc --namespace nfc,stats",
+    out: [
+        "nqstatslog_nfc.h",
+    ],
+}
+
+genrule {
+    name: "nqstatslog_nfc.cpp",
+    tools: ["stats-log-api-gen"],
+    cmd: "$(location stats-log-api-gen) --cpp $(genDir)/nqstatslog_nfc.cpp --module nfc --namespace nfc,stats --importHeader nqstatslog_nfc.h",
+    out: [
+        "nqstatslog_nfc.cpp",
+    ],
+}
+
+cc_fuzz {
+    name: "nqnfc_nci_fuzzer",
+    defaults: ["nfc_fuzzer_defaults"],
+    fuzzing_frameworks: {
+      afl: false,
+    },
+    srcs: [
+        "nfc/nci/*.cc",
+        "nfc/nfc/*.cc",
+        "adaptation/debug_lmrt.cc",
+        "gki/common/*.cc",
+        "gki/ulinux/*.cc",
+        "fuzzers/*.cc",
+        "fuzzers/nci/*.cc",
+    ],
+    shared_libs: [
+        "libstatslog_nfc",
+    ]
+}
+
+cc_fuzz {
+    name: "nqnfc_rw_fuzzer",
+    defaults: ["nfc_fuzzer_defaults"],
+    fuzzing_frameworks: {
+      afl: false,
+    },
+    srcs: [
+        "nfc/tags/rw_*.cc",
+        "nfc/tags/tags_int.cc",
+        "gki/common/*.cc",
+        "gki/ulinux/*.cc",
+        "fuzzers/*.cc",
+        "fuzzers/rw/*.cc",
+    ],
+}
+
+cc_fuzz {
+    name: "nqnfc_ce_fuzzer",
+    defaults: ["nfc_fuzzer_defaults"],
+    fuzzing_frameworks: {
+      afl: false,
+    },
+    srcs: [
+        "nfc/tags/ce_*.cc",
+        "nfc/tags/tags_int.cc",
+        "gki/common/*.cc",
+        "gki/ulinux/*.cc",
+        "fuzzers/*.cc",
+        "fuzzers/ce/*.cc",
+    ],
+}
+
+cc_fuzz {
+    name: "nqnfc_ndef_fuzzer",
+    defaults: ["nfc_fuzzer_defaults"],
+    fuzzing_frameworks: {
+      afl: false,
+    },
+    srcs: [
+        "nfa/dm/nfa_dm_ndef.cc",
+        "nfc/ndef/*.cc",
+        "gki/common/*.cc",
+        "gki/ulinux/*.cc",
+        "fuzzers/*.cc",
+        "fuzzers/ndef/*.cc",
+    ],
+}
+
+cc_fuzz {
+    name: "nqnfc_llcp_fuzzer",
+    defaults: ["nfc_fuzzer_defaults"],
+    fuzzing_frameworks: {
+      afl: false,
+    },
+    srcs: [
+        "nfc/llcp/*.cc",
+        "gki/common/*.cc",
+        "gki/ulinux/*.cc",
+        "fuzzers/*.cc",
+        "fuzzers/llcp/*.cc",
+    ],
+}

@@ -1,2 +1,2 @@
-eisenbach@google.com
-kandoiruchi@google.com
+# Bug component: 48448
+include platform/packages/apps/Nfc:/OWNERS
